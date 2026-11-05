@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grade 10 · C10 Decision Lab</title>
+<style>
+:root{--ink:#172033;--muted:#64748b;--line:#dbe3ee;--paper:#f5f7fb;--card:#fff;--blue:#3157d5;--blue2:#eaf0ff;--green:#147d55;--red:#b54747;--amber:#946200}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#172554;color:white;padding:28px max(20px,calc((100% - 1180px)/2))}header h1{margin:0;font-size:clamp(24px,4vw,36px)}header p{margin:6px 0 0;color:#dbeafe}
+main{max-width:1180px;margin:24px auto;padding:0 18px 48px}.toolbar,.grid{display:grid;gap:16px}.toolbar{grid-template-columns:1fr auto;align-items:center;margin-bottom:16px}.grid{grid-template-columns:1fr 1fr}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 3px 12px #1e293b08;margin-bottom:16px}
+h2{font-size:19px;margin:0 0 12px}h3{font-size:15px;margin:16px 0 8px}.muted,.hint{color:var(--muted)}.hint{font-size:13px;margin:4px 0 12px}
+button,select,input{font:inherit}button{border:0;border-radius:9px;padding:9px 13px;background:var(--blue);color:white;cursor:pointer;font-weight:600}button.secondary{background:var(--blue2);color:#2444a8}button.danger{background:#fff0f0;color:var(--red)}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+select,input[type=text],input[type=number]{border:1px solid var(--line);border-radius:8px;padding:8px;background:white;color:var(--ink);min-width:0;max-width:100%}
+input[type=number]{width:100px}.actions{display:flex;gap:8px;flex-wrap:wrap}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:540px}th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:center}th{background:#f8faff;font-size:13px;color:#475569}td:first-child,th:first-child{text-align:left}td input{width:86px!important}.name-input{width:150px!important}.prob-input{width:88px!important}
+.results{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{background:#f8faff;border:1px solid var(--line);border-radius:10px;padding:12px}.metric strong{display:block;font-size:13px;color:var(--muted)}.metric .value{font-size:19px;font-weight:750;margin:5px 0}.winner{color:var(--green);font-weight:700}.pill{display:inline-block;border-radius:99px;background:#e9f7f0;color:#126345;padding:2px 8px;font-size:12px;margin:2px}
+.stage{border-left:3px solid #a5b4fc;padding:4px 0 8px 13px;margin:12px 0}.stage strong{display:block}.stage small{color:var(--muted)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.node{background:#f1f5ff;border:1px solid #b9c8ff;border-radius:10px;padding:10px 12px;min-width:120px}.arrow{color:#64748b;font-weight:bold}
+.notice{padding:10px 12px;border-radius:9px;background:#fff8e6;color:#795600;font-size:13px}.error{color:var(--red);font-size:13px;margin-top:8px}.footer{font-size:13px;color:var(--muted);margin-top:20px}
+a{color:#3157d5}label{font-weight:600;font-size:13px} .inline-field{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.results{grid-template-columns:1fr 1fr}.toolbar{grid-template-columns:1fr}.card{padding:14px}}
+@media(max-width:420px){.results{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>Decision Lab · C10</h1><p>Grade 10 · Term 1 · Interactive Decision-Making Under Uncertainty</p></header>
+<main>
+ <div class="toolbar">
+  <div><strong>Explore a decision problem</strong><div class="hint">Edit the alternatives, states, payoffs and probabilities. Results update automatically.</div></div>
+  <div class="inline-field"><label for="example">Preloaded example</label><select id="example"><option value="farm">Farm investment</option><option value="school">School event plan</option></select></div>
+ </div>
+ <section class="card">
+  <h2>1. Decision problem</h2>
+  <div class="grid">
+   <div><h3>Alternatives</h3><div id="alternatives"></div><div class="actions"><button class="secondary" id="addAlt">+ Add alternative</button></div></div>
+   <div><h3>States of nature and probabilities</h3><div id="states"></div><div class="actions"><button class="secondary" id="addState">+ Add state</button></div><p class="hint">Probabilities are entered as percentages and should add up to 100% for EMV/Bayes.</p></div>
+  </div>
+  <h3>Payoff table</h3><p class="hint">Enter numerical payoffs. This model assumes higher payoffs are better.</p>
+  <div class="table-wrap"><table id="payoffTable"></table></div>
+  <div id="validation" aria-live="polite"></div>
+ </section>
+ <section class="card">
+  <h2>2. Decision criteria</h2><p class="hint">Each criterion is calculated independently using the current payoff table.</p>
+  <div class="results" id="results"></div>
+ </section>
+ <section class="card">
+  <h2>3. Staged filtering</h2>
+  <p class="hint">Choose the order of criteria. At each stage, only alternatives tied for the best value among the survivors move forward.</p>
+  <div class="inline-field"><label for="stageOrder">Filtering order</label><select id="stageOrder">
+   <option value="maximax,maximin,regret,emv">Maximax → Maximin → Minimax Regret → EMV/Bayes</option>
+   <option value="maximin,maximax,emv,regret">Maximin → Maximax → EMV/Bayes → Minimax Regret</option>
+   <option value="emv,maximin,regret,maximax">EMV/Bayes → Maximin → Minimax Regret → Maximax</option>
+   <option value="regret,emv,maximin,maximax">Minimax Regret → EMV/Bayes → Maximin → Maximax</option>
+  </select></div>
+  <div id="stages"></div>
+ </section>
+ <section class="card">
+  <h2>4. Filtering flow diagram</h2><p class="hint">The diagram shows the surviving alternatives after each stage.</p>
+  <div class="flow" id="flow" aria-live="polite"></div>
+ </section>
+ <section class="card">
+  <h2>5. AI development record</h2>
+  <p>AI assistance was used to plan and build this interactive decision webpage.</p>
+  <p class="notice">Before submitting, replace the placeholder below with the public share link to your ChatGPT development conversation: create a share link from this conversation and paste it into the link field.</p>
+  <div class="inline-field"><label for="aiLink">AI conversation URL</label><input id="aiLink" type="text" placeholder="Paste your shared ChatGPT conversation URL" style="flex:1;min-width:220px"><button id="saveLink">Save link</button></div>
+  <p id="linkStatus" class="hint" aria-live="polite">No conversation link added yet.</p>
+ </section>
+ <p class="footer">C10 Practice · Decision models assume payoff maximization. Keep a copy of this file and publish it through GitHub Pages to obtain the required public webpage URL.</p>
+</main>
+<script>
+const examples={
+ farm:{alts:["Expand crops","Build greenhouse","Rent extra land"],states:["Low demand","Medium demand","High demand"],probs:[25,45,30],payoffs:[[20,55,110],[35,65,90],[10,70,100]]},
+ school:{alts:["Sports day","Talent show","Food fair"],states:["Low attendance","Average attendance","High attendance"],probs:[20,50,30],payoffs:[[15,50,95],[25,70,85],[5,60,120]]}
+};
+let data=structuredClone(examples.farm);
+const $=id=>document.getElementById(id);
+const fmt=n=>Number.isFinite(n)?Number(n.toFixed(2)).toString():"—";
+const names={maximax:"Maximax",maximin:"Maximin",regret:"Minimax Regret",emv:"EMV / Bayes"};
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderInputs(){
+ $('alternatives').innerHTML=data.alts.map((a,i)=>`<div class="inline-field" style="margin:5px 0"><input class="name-input" aria-label="Alternative ${i+1}" data-alt="${i}" value="${esc(a)}"><button class="danger" data-remove-alt="${i}" aria-label="Remove alternative ${i+1}">Remove</button></div>`).join('');
+ $('states').innerHTML=data.states.map((s,i)=>`<div class="inline-field" style="margin:5px 0"><input class="name-input" aria-label="State ${i+1}" data-state="${i}" value="${esc(s)}"><label>Probability %</label><input class="prob-input" type="number" min="0" max="100" step="any" data-prob="${i}" value="${data.probs[i]}"><button class="danger" data-remove-state="${i}" aria-label="Remove state ${i+1}">Remove</button></div>`).join('');
+ $('payoffTable').innerHTML=`<thead><tr><th>Alternative</th>${data.states.map(s=>`<th>${esc(s)}</th>`).join('')}</tr></thead><tbody>${data.alts.map((a,i)=>`<tr><td>${esc(a)}</td>${data.states.map((s,j)=>`<td><input type="number" step="any" data-pay="${i},${j}" value="${data.payoffs[i][j]}" aria-label="Payoff ${a}, ${s}"></td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+function calculate(){
+ const valid=data.alts.length&&data.states.length&&data.payoffs.every(r=>r.length===data.states.length&&r.every(Number.isFinite));
+ const probsValid=data.probs.length===data.states.length&&data.probs.every(p=>Number.isFinite(p)&&p>=0)&&Math.abs(data.probs.reduce((a,b)=>a+b,0)-100)<1e-7;
+ if(!valid){$('validation').innerHTML='<p class="error">Enter at least one alternative and state, with a valid number in every payoff cell.</p>';return null}
+ $('validation').innerHTML=probsValid?'':'<p class="error">Probabilities must be between 0 and 100 and add up to exactly 100% to calculate EMV/Bayes.</p>';
+ const rows=data.payoffs, rowMax=rows.map(r=>Math.max(...r)), rowMin=rows.map(r=>Math.min(...r));
+ const colMax=data.states.map((_,j)=>Math.max(...rows.map(r=>r[j])));
+ const regrets=rows.map(r=>r.map((v,j)=>colMax[j]-v)), maxRegret=regrets.map(r=>Math.max(...r));
+ const emv=rows.map(r=>probsValid?r.reduce((sum,v,j)=>sum+v*data.probs[j]/100,0):NaN);
+ const best=(vals,mode)=>{if(!vals.every(Number.isFinite))return [];const target=mode==='min'?Math.min(...vals):Math.max(...vals);return vals.map((v,i)=>Math.abs(v-target)<1e-8?i:-1).filter(i=>i>=0)};
+ return {rowMax,rowMin,maxRegret,emv,regrets,probsValid,best,
+  criteria:{maximax:{vals:rowMax,mode:'max'},maximin:{vals:rowMin,mode:'max'},regret:{vals:maxRegret,mode:'min'},emv:{vals:emv,mode:'max'}}};
+}
+function renderResults(c){
+ if(!c){$('results').innerHTML='';$('stages').innerHTML='';$('flow').innerHTML='';return}
+ $('results').innerHTML=Object.entries(c.criteria).map(([key,obj])=>{const winners=c.best(obj.vals,obj.mode);return `<div class="metric"><strong>${names[key]}</strong><div class="value">${obj.vals.every(Number.isFinite)?fmt(key==='regret'?Math.min(...obj.vals):Math.max(...obj.vals)):'N/A'}</div><div>${winners.length?winners.map(i=>`<span class="pill">${esc(data.alts[i])}</span>`).join(''):'<span class="muted">Unavailable</span>'}</div></div>`}).join('');
+}
+function renderStages(c){
+ if(!c)return;let survivors=data.alts.map((_,i)=>i), stages=[];
+ $('stageOrder').value=$('stageOrder').value||'maximax,maximin,regret,emv';
+ for(const key of $('stageOrder').value.split(',')){
+  const criterion=c.criteria[key], values=survivors.map(i=>criterion.vals[i]);
+  const target=criterion.mode==='min'?Math.min(...values):Math.max(...values);
+  const next=values.every(Number.isFinite)?survivors.filter(i=>Math.abs(criterion.vals[i]-target)<1e-8):survivors.slice();
+  stages.push({key,before:survivors.slice(),after:next.slice(),target});
+  survivors=next;
+ }
+ $('stages').innerHTML=stages.map((s,i)=>`<div class="stage"><strong>Stage ${i+1}: ${names[s.key]}</strong><small>Remaining before: ${s.before.map(x=>esc(data.alts[x])).join(', ')}<br>Best value: ${Number.isFinite(s.target)?fmt(s.target):'Unavailable'}<br>Survivors: ${s.after.map(x=>esc(data.alts[x])).join(', ')||'None'}</small></div>`).join('')+`<p><strong>Final recommendation(s):</strong> ${survivors.length?survivors.map(i=>`<span class="pill">${esc(data.alts[i])}</span>`).join(''):'None'}</p>`;
+ $('flow').innerHTML=[`<div class="node"><strong>Start</strong><br>${data.alts.map(esc).join('<br>')}</div>`,...stages.map((s,i)=>`<span class="arrow">→</span><div class="node"><strong>${i+1}. ${names[s.key]}</strong><br>${s.after.map(x=>esc(data.alts[x])).join('<br>')||'No survivors'}</div>`),`<span class="arrow">→</span><div class="node"><strong>Final result</strong><br>${survivors.map(x=>esc(data.alts[x])).join('<br>')||'None'}</div>`].join('');
+}
+function update(){renderInputs();const c=calculate();renderResults(c);renderStages(c)}
+$('example').addEventListener('change',e=>{data=structuredClone(examples[e.target.value]);update()});
+$('addAlt').onclick=()=>{data.alts.push('New alternative');data.payoffs.push(data.states.map(()=>0));update()};
+$('addState').onclick=()=>{data.states.push('New state');data.probs.push(0);data.payoffs.forEach(r=>r.push(0));update()};
+$('stageOrder').onchange=()=>{const c=calculate();renderStages(c)};
+document.addEventListener('input',e=>{
+ const t=e.target;
+ if(t.dataset.alt!==undefined)data.alts[+t.dataset.alt]=t.value;
+ else if(t.dataset.state!==undefined)data.states[+t.dataset.state]=t.value;
+ else if(t.dataset.prob!==undefined)data.probs[+t.dataset.prob]=t.value===''?NaN:Number(t.value);
+ else if(t.dataset.pay!==undefined){const [i,j]=t.dataset.pay.split(',').map(Number);data.payoffs[i][j]=t.value===''?NaN:Number(t.value)}
+ else return;
+ const c=calculate();renderResults(c);renderStages(c);
+ // Refresh headings and labels without replacing the active input.
+ if(t.dataset.alt!==undefined||t.dataset.state!==undefined){const selector=t.dataset.alt!==undefined?`[data-alt=\"${t.dataset.alt}\"]`:`[data-state=\"${t.dataset.state}\"]`;const pos=t.selectionStart;renderInputs();const replacement=document.querySelector(selector);if(replacement){replacement.focus();try{replacement.setSelectionRange(pos,pos)}catch{}}}
+});
+document.addEventListener('click',e=>{
+ const t=e.target;
+ if(t.dataset.removeAlt!==undefined&&data.alts.length>1){const i=+t.dataset.removeAlt;data.alts.splice(i,1);data.payoffs.splice(i,1);update()}
+ if(t.dataset.removeState!==undefined&&data.states.length>1){const i=+t.dataset.removeState;data.states.splice(i,1);data.probs.splice(i,1);data.payoffs.forEach(r=>r.splice(i,1));update()}
+});
+$('saveLink').onclick=()=>{const raw=$('aiLink').value.trim();let url;try{url=new URL(raw)}catch{url=null}if(!url||!['http:','https:'].includes(url.protocol)){$('linkStatus').textContent='Please enter a valid public https:// or http:// URL.';return}const a=document.createElement('a');a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open AI development conversation';$('linkStatus').replaceChildren(a)};
+update();
+</script>
+</body>
+</html>
